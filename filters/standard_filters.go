@@ -100,15 +100,17 @@ func AddStandardFilters(fd FilterDictionary) { //nolint: gocyclo
 	fd.AddFilter("times", func(a, b float64) float64 {
 		return a * b
 	})
-	fd.AddFilter("divided_by", func(a float64, b any) any {
-		switch q := b.(type) {
-		case int, int16, int32, int64:
-			return int(a) / q.(int)
-		case float32, float64:
-			return a / b.(float64)
-		default:
-			return nil
+	fd.AddFilter("divided_by", func(a, b any) any {
+		typ := reflect.TypeFor[float64]()
+		bx, err := values.Convert(b, typ)
+		if err != nil {
+			return math.NaN()
 		}
+		ax, err := values.Convert(a, typ)
+		if err != nil {
+			return math.NaN()
+		}
+		return ax.(float64) / bx.(float64)
 	})
 	fd.AddFilter("round", func(n float64, places func(int) int) float64 {
 		pl := places(0)

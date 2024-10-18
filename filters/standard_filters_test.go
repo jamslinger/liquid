@@ -2,6 +2,7 @@ package filters
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -180,11 +181,13 @@ Liquid" | slice: 2, 4`, "quid"},
 	{`24 | modulo: 7`, 3.0},
 	// {`183.357 | modulo: 12 | `, 3.357}, // TODO test suit use inexact
 
-	{`16 | divided_by: 4`, 4},
-	{`5 | divided_by: 3`, 1},
-	{`20 | divided_by: 7`, 2},
+	{`16 | divided_by: 4`, 4.0},
+	{`5 | divided_by: 3`, 1.6666666666666667},
+	{`20 | divided_by: 7`, 2.857142857142857},
 	{`20 | divided_by: 7.0`, 2.857142857142857},
-	{`20 | divided_by: 's'`, nil},
+	{`20 | divided_by: 's'`, math.NaN()},
+	{`'s' | divided_by: 3`, math.NaN()},
+	{`20 | divided_by: 0`, math.Inf(0)},
 
 	{`1.2 | round`, 1.0},
 	{`2.7 | round`, 3.0},
@@ -272,6 +275,16 @@ func TestFilters(t *testing.T) {
 		t.Run(fmt.Sprintf("%02d", i+1), func(t *testing.T) {
 			actual, err := expressions.EvaluateString(test.in, context)
 			require.NoErrorf(t, err, test.in)
+
+			if exp, isFloat := test.expected.(float64); isFloat && math.IsNaN(exp) {
+				if act := actual.(float64); !math.IsNaN(act) {
+					require.FailNowf(t, fmt.Sprintf("Not equal: \n"+
+						"expected: %s\n"+
+						"actual  : %s", test.expected, actual), test.in)
+				}
+				return
+			}
+
 			require.Equalf(t, test.expected, actual, test.in)
 		})
 	}
